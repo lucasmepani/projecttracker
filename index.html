@@ -273,135 +273,6 @@ function ProjectDetail({ project, onBack }) {
   </div>;
 }
 
-function MyView({ name, projects, onSelect }) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const match = nameMatcher(name);
-  const myProjects = projects.filter(p=>match(p.owner));
-  const myPhases = projects.flatMap(p=>(p.phases||[]).filter(ph=>match(ph.owner)).map(ph=>({...ph,projectName:p.name,project:p})));
-  const allMtgs = projects.flatMap(p=>(p.meetings||[]).filter(m=>(m.attendees||"").split(",").some(a=>match(a.trim()))).map(m=>({...m,projectName:p.name,project:p}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const upcoming = allMtgs.filter(m=>{try{return new Date(m.date)>=today}catch{return false}});
-  const past = allMtgs.filter(m=>{try{return new Date(m.date)<today}catch{return false}});
-  const myUpdates = projects.filter(p=>match(p.owner)&&(p.statusUpdates||[]).length>0).map(p=>({project:p,latest:p.statusUpdates[p.statusUpdates.length-1]}));
-  const stakeProjects = projects.flatMap(p=>(p.stakeholders||[]).filter(s=>match(s.name)).map(s=>({project:p,role:s.role,involvement:s.involvement,communication:s.communication}))).filter(({project:p})=>!match(p.owner));
-  const urg = d=>{try{const diff=(new Date(d)-today)/86400000;return diff<=3?"urgent":diff<=7?"soon":"normal"}catch{return"normal"}};
-  const fmtD = d=>{try{return new Date(d).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}catch{return d}};
-  const daysU = d=>{try{const diff=Math.ceil((new Date(d)-today)/86400000);if(diff===0)return"Today";if(diff===1)return"Tomorrow";if(diff<0)return Math.abs(diff)+"d ago";return"In "+diff+"d"}catch{return""}};
-  const urgCount = upcoming.filter(m=>urg(m.date)!=="normal").length;
-  const hasAny = myProjects.length||myPhases.length||upcoming.length||myUpdates.length||stakeProjects.length;
-
-  if (!hasAny) return <div style={{padding:"80px 32px",textAlign:"center"}}>
-    <div style={{fontFamily:"'Times New Roman',serif",fontSize:22,color:"#444",marginBottom:8}}>No results for "{name}"</div>
-    <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#333"}}>Try a different name or partial match</div>
-  </div>;
-
-  return <div style={{padding:"28px 32px",maxWidth:1100}}>
-    <div style={{marginBottom:28}}>
-      <div style={{fontFamily:"'Times New Roman',serif",fontSize:26,fontWeight:700,color:"#fff"}}>Hi, <span style={{color:GOLD}}>{name}</span></div>
-      <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555",marginTop:4,letterSpacing:"0.08em"}}>HERE'S WHAT'S ON YOUR PLATE</div>
-    </div>
-    <div style={{display:"flex",gap:12,marginBottom:32,flexWrap:"wrap"}}>
-      {[{l:"Projects Owned",v:myProjects.length,c:GOLD},{l:"Assigned Phases",v:myPhases.length,c:"#60a5fa"},{l:"Upcoming Meetings",v:upcoming.length,c:"#a78bfa"},{l:"Stakeholder On",v:stakeProjects.length,c:"#34d399"},{l:"Pending Updates",v:myUpdates.length,c:"#f472b6"}].map(({l,v,c})=><div key={l} style={{background:CARD,border:"1px solid "+BORDER,borderRadius:10,padding:"14px 22px",minWidth:140}}>
-        <div style={{fontFamily:"'Times New Roman',serif",fontSize:28,fontWeight:700,color:c}}>{v}</div>
-        <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#555",letterSpacing:"0.08em",textTransform:"uppercase"}}>{l}</div>
-      </div>)}
-    </div>
-
-    {upcoming.length>0&&<div style={{marginBottom:32}}>
-      <SectionTitle>Upcoming Meetings {urgCount>0&&<span style={{background:"#dc2626",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,fontWeight:700,display:"inline-flex",alignItems:"center",justifyContent:"center",marginLeft:4}}>{urgCount}</span>}</SectionTitle>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {upcoming.map((m,i)=>{const u=urg(m.date);return<div key={i} style={{background:u==="urgent"?"rgba(220,38,38,0.07)":u==="soon"?"rgba(217,119,6,0.07)":CARD,border:"1px solid "+(u==="urgent"?"#dc2626":u==="soon"?"#d97706":BORDER),borderRadius:8,padding:"16px 22px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-            <div style={{minWidth:110,flexShrink:0}}>
-              <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:u!=="normal"?(u==="urgent"?"#f87171":GOLD):"#777"}}>{fmtD(m.date)}</div>
-              <div style={{marginTop:4,display:"inline-block",fontFamily:"'DM Mono',monospace",fontSize:10,padding:"2px 7px",borderRadius:3,fontWeight:700,background:u==="urgent"?"#dc2626":u==="soon"?"#d97706":"#2a2a2a",color:u!=="normal"?"#fff":"#555"}}>{daysU(m.date)}</div>
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:"'Times New Roman',serif",fontSize:14,fontWeight:600,color:"#eee",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
-              <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#666",marginTop:2}}>&#128101; {m.attendees}</div>
-            </div>
-            <button onClick={()=>onSelect(m.project)} style={{background:"none",border:"1px solid "+BORDER,color:GOLD,borderRadius:5,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>&rarr; {m.projectName}</button>
-            {u!=="normal"&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:u==="urgent"?"#f87171":GOLD,border:"1px solid "+(u==="urgent"?"#f87171":GOLD),padding:"3px 9px",borderRadius:4,whiteSpace:"nowrap",flexShrink:0}}>{u==="urgent"?"! Urgent":"Soon"}</div>}
-          </div>
-        </div>;})}
-      </div>
-    </div>}
-
-    {myProjects.length>0&&<div style={{marginBottom:32}}>
-      <SectionTitle>Projects I Own</SectionTitle>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12}}>
-        {myProjects.map(p=><div key={p.id} onClick={()=>onSelect(p)} style={{background:CARD,border:"1px solid "+BORDER,borderRadius:10,padding:"18px 20px",cursor:"pointer",borderLeft:"4px solid "+getGroupColor(p.group)}} onMouseEnter={e=>e.currentTarget.style.borderColor=GOLD} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDER}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-            <div style={{fontFamily:"'Times New Roman',serif",fontSize:15,fontWeight:600,color:"#eee",flex:1,marginRight:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-            <StatusBadge status={p.status} small/>
-          </div>
-          <div style={{fontFamily:"'Crimson Pro',serif",fontSize:13,color:"#777",marginBottom:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.description}</div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><PriorityBadge priority={p.priority}/><span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:GOLD}}>{p.deadline}</span></div>
-        </div>)}
-      </div>
-    </div>}
-
-    {myPhases.length>0&&<div style={{marginBottom:32}}>
-      <SectionTitle>Phases Assigned to Me</SectionTitle>
-      <div style={{background:CARD,border:"1px solid "+BORDER,borderRadius:10,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr style={{borderBottom:"1px solid "+BORDER}}>{["Project","Timeline","Checkpoint","Deliverable","Status"].map((h,i)=><th key={i} style={{textAlign:"left",padding:"9px 14px",background:"#252525",color:"#666",fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-          <tbody>{myPhases.map((ph,i)=><tr key={i} style={{borderBottom:i<myPhases.length-1?"1px solid "+BORDER:"none",cursor:"pointer"}} onClick={()=>onSelect(ph.project)}>
-            <td style={{padding:"11px 14px",fontFamily:"'DM Mono',monospace",fontSize:13,color:GOLD,whiteSpace:"nowrap"}}>{ph.projectName}</td>
-            <td style={{padding:"11px 14px",fontFamily:"'DM Mono',monospace",fontSize:11,color:"#888",whiteSpace:"nowrap"}}>{ph.timeline}</td>
-            <td style={{padding:"11px 14px",fontSize:13,color:"#ccc",lineHeight:1.5}}>{ph.checkpoint}</td>
-            <td style={{padding:"11px 14px",fontSize:13,color:"#888"}}>{ph.deliverable||"--"}</td>
-            <td style={{padding:"11px 14px"}}><StatusBadge status={ph.status} small/></td>
-          </tr>)}</tbody>
-        </table>
-      </div>
-    </div>}
-
-    {myUpdates.length>0&&<div style={{marginBottom:32}}>
-      <SectionTitle>Status Updates</SectionTitle>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {myUpdates.map(({project:p,latest},i)=><div key={i} style={{background:CARD,border:"1px solid "+BORDER,borderRadius:8,padding:"16px 22px",display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center"}}>
-          <div>
-            <div style={{fontFamily:"'Times New Roman',serif",fontSize:14,fontWeight:600,color:"#eee",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-            <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555",marginBottom:6}}>{latest.date}</div>
-            <div style={{fontFamily:"'Crimson Pro',serif",fontSize:14,color:"#aaa",lineHeight:1.5}}>{latest.notes}</div>
-          </div>
-          <button onClick={()=>onSelect(p)} style={{background:"none",border:"1px solid "+GOLD,color:GOLD,borderRadius:6,padding:"7px 16px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>View &rarr;</button>
-        </div>)}
-      </div>
-    </div>}
-
-    {stakeProjects.length>0&&<div style={{marginBottom:32}}>
-      <SectionTitle>Projects I'm a Stakeholder On</SectionTitle>
-      <div style={{background:CARD,border:"1px solid "+BORDER,borderRadius:10,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr style={{borderBottom:"1px solid "+BORDER}}>{["Project","Group","Status","My Role","Involvement","Check-in"].map((h,i)=><th key={i} style={{textAlign:"left",padding:"9px 14px",background:"#252525",color:"#666",fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-          <tbody>{stakeProjects.map(({project:p,role,involvement,communication},i)=><tr key={i} onClick={()=>onSelect(p)} style={{borderBottom:i<stakeProjects.length-1?"1px solid "+BORDER:"none",cursor:"pointer"}} onMouseEnter={e=>Array.from(e.currentTarget.cells).forEach(c=>c.style.background="rgba(207,184,124,0.05)")} onMouseLeave={e=>Array.from(e.currentTarget.cells).forEach(c=>c.style.background="")}>
-            <td style={{padding:"12px 14px",fontFamily:"'Times New Roman',serif",fontSize:14,fontWeight:600,color:"#eee",borderLeft:"3px solid "+getGroupColor(p.group)}}>{p.name}</td>
-            <td style={{padding:"12px 14px"}}><span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:getGroupColor(p.group)}}>{p.group}</span></td>
-            <td style={{padding:"12px 14px"}}><StatusBadge status={p.status} small/></td>
-            <td style={{padding:"12px 14px"}}><span style={{fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:4,background:role==="Contributor"?"rgba(96,165,250,0.15)":role==="Advisor"?"rgba(207,184,124,0.15)":"rgba(107,114,128,0.15)",color:role==="Contributor"?"#60a5fa":role==="Advisor"?GOLD:"#9ca3af"}}>{role}</span></td>
-            <td style={{padding:"12px 14px",fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:600,color:involvement==="High"?"#f87171":involvement==="Medium"?GOLD:"#6b7280"}}>{involvement}</td>
-            <td style={{padding:"12px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,color:"#888"}}>{communication}</td>
-          </tr>)}</tbody>
-        </table>
-      </div>
-    </div>}
-
-    {past.length>0&&<div style={{marginBottom:32}}>
-      <SectionTitle>Past Meetings</SectionTitle>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {past.slice(0,5).map((m,i)=><div key={i} style={{background:"#191919",border:"1px solid "+BORDER,borderRadius:8,padding:"12px 22px",opacity:0.65}}>
-          <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-            <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555",minWidth:110,flexShrink:0}}>{fmtD(m.date)}</div>
-            <div style={{flex:1,minWidth:0}}><span style={{fontFamily:"'Times New Roman',serif",fontSize:14,color:"#777"}}>{m.title}</span><span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#444",marginLeft:10}}>&#128101; {m.attendees}</span></div>
-            <button onClick={()=>onSelect(m.project)} style={{background:"none",border:"1px solid "+BORDER,color:"#555",borderRadius:5,padding:"4px 10px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",flexShrink:0}}>&rarr; {m.projectName}</button>
-          </div>
-        </div>)}
-      </div>
-    </div>}
-  </div>;
-}
-
 function App() {
   const [projects, setProjects]       = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -411,10 +282,6 @@ function App() {
   const [search, setSearch]           = useState("");
   const [fStatus, setFStatus]         = useState("All");
   const [fGroup, setFGroup]           = useState("All");
-  const [mainTab, setMainTab]         = useState("all");
-  const [nameInput, setNameInput]     = useState("");
-  const [nameActive, setNameActive]   = useState("");
-  const [suggestions, setSuggestions] = useState([]);
 
   function fetchData() {
     setLoading(true); setError(null);
@@ -425,14 +292,6 @@ function App() {
   }
   useEffect(()=>{ fetchData(); },[]);
 
-  const people = Array.from(new Set(projects.flatMap(p=>{
-    const n=[p.owner];
-    (p.stakeholders||[]).forEach(s=>n.push(s.name));
-    (p.phases||[]).forEach(ph=>n.push(ph.owner));
-    (p.meetings||[]).forEach(m=>(m.attendees||"").split(",").forEach(a=>n.push(a.trim())));
-    return n.filter(Boolean);
-  }))).sort();
-
   const allGroups   = ["All",...Array.from(new Set(projects.map(p=>p.group).filter(Boolean)))];
   const allStatuses = ["All",...Object.keys(STATUS_COLORS)];
   const filtered = projects.filter(p=>{
@@ -441,9 +300,6 @@ function App() {
       &&(fStatus==="All"||p.status===fStatus)&&(fGroup==="All"||p.group===fGroup);
   });
   const grouped = allGroups.filter(g=>g!=="All").reduce((acc,g)=>{acc[g]=filtered.filter(p=>p.group===g);return acc;},{});
-
-  function handleNameInput(val){ setNameInput(val); setSuggestions(val.length>=2?people.filter(n=>n.toLowerCase().includes(val.toLowerCase())).slice(0,6):[]); }
-  function selectName(n){ setNameActive(n); setNameInput(n); setSuggestions([]); setMainTab("mine"); }
 
   if(loading) return <LoadingScreen/>;
   if(error)   return <ErrorScreen message={error} onRetry={fetchData}/>;
@@ -461,44 +317,20 @@ function App() {
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#666",letterSpacing:"0.1em",textTransform:"uppercase"}}>Project Tracker</div>
           </div>
         </div>
-        <div style={{display:"flex",gap:4,background:"#252525",borderRadius:8,padding:4,flexShrink:0}}>
-          {[["all","All Projects"],["mine","My View"]].map(([k,l])=><button key={k} onClick={()=>setMainTab(k)} style={{background:mainTab===k?(k==="mine"?GOLD:"#333"):"none",border:"none",color:mainTab===k?(k==="mine"?BLACK:"#fff"):"#666",borderRadius:5,padding:"6px 16px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer",fontWeight:mainTab===k?700:400}}>{l}</button>)}
-        </div>
         <div style={{flex:1}}/>
         {lastUpdated&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",whiteSpace:"nowrap"}}>Updated {lastUpdated.toLocaleTimeString()}</div>}
         <button onClick={fetchData} className="fbtn" style={{background:"none",border:"1px solid "+BORDER,color:"#888",borderRadius:6,padding:"7px 14px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>&#8635; Refresh</button>
-        <div style={{position:"relative",flexShrink:0}}>
-          {mainTab==="all"
-            ?<input placeholder="Search projects..." value={search} onChange={e=>setSearch(e.target.value)} style={{background:"#252525",border:"1px solid "+BORDER,borderRadius:6,padding:"8px 14px",color:"#ccc",fontFamily:"'DM Mono',monospace",fontSize:12,outline:"none",width:200}}/>
-            :<div>
-              <input placeholder="Search your name..." value={nameInput} onChange={e=>handleNameInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&nameInput)selectName(nameInput);}} style={{background:nameActive?"rgba(207,184,124,0.08)":"#252525",border:"1px solid "+(nameActive?GOLD:BORDER),borderRadius:6,padding:"8px 14px",color:"#ccc",fontFamily:"'DM Mono',monospace",fontSize:12,outline:"none",width:220}}/>
-              {suggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#1e1e1e",border:"1px solid "+BORDER,borderRadius:6,marginTop:4,zIndex:100,overflow:"hidden"}}>
-                {suggestions.map(n=><div key={n} className="sugg" onClick={()=>selectName(n)} style={{padding:"9px 14px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:12,color:"#aaa",borderBottom:"1px solid "+BORDER}}>{n}</div>)}
-              </div>}
-            </div>}
-        </div>
+        <input placeholder="Search projects..." value={search} onChange={e=>setSearch(e.target.value)} style={{background:"#252525",border:"1px solid "+BORDER,borderRadius:6,padding:"8px 14px",color:"#ccc",fontFamily:"'DM Mono',monospace",fontSize:12,outline:"none",width:200,flexShrink:0}}/>
       </div>
-      {mainTab==="all"&&<div style={{display:"flex",gap:8,paddingBottom:12,flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:8,paddingBottom:12,flexWrap:"wrap"}}>
         <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555",alignSelf:"center",marginRight:4}}>FILTER:</span>
         {allStatuses.map(s=><button key={s} className="fbtn" onClick={()=>setFStatus(s)} style={{background:fStatus===s?GOLD:"none",border:"1px solid "+(fStatus===s?GOLD:BORDER),color:fStatus===s?BLACK:"#777",borderRadius:4,padding:"4px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",fontWeight:fStatus===s?700:400}}>{s}</button>)}
         <div style={{width:1,background:BORDER,margin:"0 4px"}}/>
         {allGroups.map(g=><button key={g} className="fbtn" onClick={()=>setFGroup(g)} style={{background:fGroup===g?getGroupColor(g):"none",border:"1px solid "+(fGroup===g?getGroupColor(g):BORDER),color:fGroup===g?BLACK:"#777",borderRadius:4,padding:"4px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",fontWeight:fGroup===g?700:400}}>{g}</button>)}
-      </div>}
-      {mainTab==="mine"&&<div style={{height:12}}/>}
+      </div>
     </div>
 
-    {mainTab==="mine"&&(nameActive
-      ?<MyView name={nameActive} projects={projects} onSelect={p=>setSelected(p)}/>
-      :<div style={{padding:"80px 32px",textAlign:"center"}}>
-        <div style={{fontFamily:"'Times New Roman',serif",fontSize:26,color:"#333",marginBottom:10}}>Who are you?</div>
-        <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#444",marginBottom:24}}>Type your name in the search bar above</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxWidth:600,margin:"0 auto"}}>
-          {people.slice(0,12).map(n=><button key={n} onClick={()=>selectName(n)} style={{background:CARD,border:"1px solid "+BORDER,color:"#777",borderRadius:20,padding:"6px 14px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.color=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=BORDER;e.currentTarget.style.color="#777";}}>{n}</button>)}
-        </div>
-      </div>
-    )}
-
-    {mainTab==="all"&&<div style={{padding:"28px 32px"}}>
+    <div style={{padding:"28px 32px"}}>
       {Object.entries(grouped).map(([group,gps])=>{
         if(!gps.length) return null;
         const gc=getGroupColor(group);
@@ -541,7 +373,7 @@ function App() {
         })}
         <div style={{marginLeft:"auto",fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555"}}>{projects.length} total projects</div>
       </div>
-    </div>}
+    </div>
   </div>;
 }
 
