@@ -273,7 +273,41 @@ function ProjectDetail({ project, onBack }) {
   </div>;
 }
 
+function PasswordGate({ onUnlock }) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState(false);
+  function attempt() {
+    if (input === "Commodore") { onUnlock(); }
+    else { setError(true); setInput(""); setTimeout(() => setError(false), 2000); }
+  }
+  return <div style={{minHeight:"100vh",background:DARK,display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{background:CARD,border:"1px solid "+BORDER,borderRadius:12,padding:"48px 56px",display:"flex",flexDirection:"column",alignItems:"center",gap:24,minWidth:340}}>
+      <div style={{width:48,height:48,borderRadius:8,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{color:BLACK,fontWeight:900,fontFamily:"serif",fontSize:22}}>V</span>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontFamily:"'Times New Roman',serif",fontSize:22,fontWeight:700,color:"#fff",marginBottom:4}}>Vanderbilt Athletics</div>
+        <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#666",letterSpacing:"0.12em",textTransform:"uppercase"}}>Project Tracker</div>
+      </div>
+      <div style={{width:"100%"}}>
+        <input
+          type="password"
+          placeholder="Enter password"
+          value={input}
+          onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter") attempt(); }}
+          autoFocus
+          style={{width:"100%",background:"#252525",border:"1px solid "+(error?"#dc2626":BORDER),borderRadius:6,padding:"10px 14px",color:"#ccc",fontFamily:"'DM Mono',monospace",fontSize:13,outline:"none",textAlign:"center",letterSpacing:"0.1em",transition:"border-color 0.2s"}}
+        />
+        {error && <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#dc2626",textAlign:"center",marginTop:8}}>Incorrect password</div>}
+      </div>
+      <button onClick={attempt} style={{background:GOLD,color:BLACK,border:"none",borderRadius:6,padding:"10px 32px",fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.08em"}}>ENTER</button>
+    </div>
+  </div>;
+}
+
 function App() {
+  const [unlocked, setUnlocked]       = useState(false);
   const [projects, setProjects]       = useState([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
@@ -290,7 +324,7 @@ function App() {
       .then(data=>{ setProjects(data); setLastUpdated(new Date()); setLoading(false); })
       .catch(err=>{ setError(err.message); setLoading(false); });
   }
-  useEffect(()=>{ fetchData(); },[]);
+  useEffect(()=>{ if(unlocked) fetchData(); },[unlocked]);
 
   const allGroups   = ["All",...Array.from(new Set(projects.map(p=>p.group).filter(Boolean)))];
   const allStatuses = ["All",...Object.keys(STATUS_COLORS)];
@@ -301,6 +335,7 @@ function App() {
   });
   const grouped = allGroups.filter(g=>g!=="All").reduce((acc,g)=>{acc[g]=filtered.filter(p=>p.group===g);return acc;},{});
 
+  if(!unlocked) return <PasswordGate onUnlock={()=>setUnlocked(true)}/>;
   if(loading) return <LoadingScreen/>;
   if(error)   return <ErrorScreen message={error} onRetry={fetchData}/>;
   if(selected) return <ProjectDetail project={selected} onBack={()=>setSelected(null)}/>;
